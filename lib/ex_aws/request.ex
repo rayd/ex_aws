@@ -1,6 +1,6 @@
 defmodule ExAws.Request do
   require Logger
-  @max_attempts 10
+  @max_attempts 1
 
   @moduledoc """
   Makes requests to AWS.
@@ -41,10 +41,14 @@ defmodule ExAws.Request do
       {:ok, %{status_code: status} = resp} when status in 400..499 ->
         case client_error(resp, config[:json_codec]) do
           {:retry, reason} ->
+            Logger.error("ExAws: HTTP ERROR: #{status} #{inspect reason}")
             request_and_retry(method, url, service, config, headers, req_body, attempt_again?(attempt, reason))
-          {:error, reason} -> {:error, reason}
+          {:error, reason} ->
+            Logger.error("ExAws: HTTP ERROR: #{status} #{inspect reason}")
+            {:error, reason}
         end
       {:ok, %{status_code: status, body: body}} when status >= 500 ->
+        Logger.error("ExAws: HTTP ERROR: #{status} #{inspect body}")
         reason = {:http_error, status, body}
         request_and_retry(method, url, service, config, headers, req_body, attempt_again?(attempt, reason))
       {:error, %{reason: reason}} ->
